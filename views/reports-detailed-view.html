@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUSO - Signalements</title>
+    <link rel="stylesheet" href="../css/admin-dashboard.css">
+    <link rel="stylesheet" href="../css/detailed-views.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="detailed-view-container">
+        <!-- Header avec retour -->
+        <header class="detailed-view-header">
+            <button class="back-button" onclick="goBack()">
+                <span class="material-icons">arrow_back</span>
+                <span>Retour au dashboard</span>
+            </button>
+            <div class="header-title">
+                <span class="material-icons">report</span>
+                <h1>Signalements</h1>
+            </div>
+            <button class="refresh-button" onclick="loadReports()">
+                <span class="material-icons">refresh</span>
+            </button>
+        </header>
+
+        <!-- Barre de recherche et filtres -->
+        <div class="filters-container">
+            <div class="search-box">
+                <span class="material-icons">search</span>
+                <input type="text" id="search-input" placeholder="Rechercher par nom d'arrêt ou ID..." onkeyup="applyFilters()">
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-status="all" onclick="setStatusFilter('all')">
+                    Tous <span class="count" id="count-all">0</span>
+                </button>
+                <button class="filter-btn" data-status="pending" onclick="setStatusFilter('pending')">
+                    En attente <span class="count" id="count-pending">0</span>
+                </button>
+                <button class="filter-btn" data-status="confirmed" onclick="setStatusFilter('confirmed')">
+                    Confirmés <span class="count" id="count-confirmed">0</span>
+                </button>
+                <button class="filter-btn" data-status="denied" onclick="setStatusFilter('denied')">
+                    Rejetés <span class="count" id="count-denied">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats header -->
+        <div class="stats-header">
+            <div class="stat-item">
+                <span class="stat-label">Total</span>
+                <span class="stat-value" id="total-reports">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Filtrés</span>
+                <span class="stat-value" id="filtered-reports">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Page</span>
+                <span class="stat-value" id="current-page-info">1/1</span>
+            </div>
+        </div>
+
+        <!-- Liste des signalements -->
+        <div class="content-area">
+            <div id="loading-spinner" class="loading-spinner" style="display:none;">
+                <div class="spinner"></div>
+            </div>
+            <div id="reports-list" class="reports-list"></div>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <span class="material-icons">inbox</span>
+                <p>Aucun signalement trouvé</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-controls">
+            <button class="pagination-btn" id="prev-page" onclick="previousPage()" disabled>
+                <span class="material-icons">chevron_left</span>
+                Précédent
+            </button>
+            <span class="pagination-info" id="pagination-info">Page 1 / 1</span>
+            <button class="pagination-btn" id="next-page" onclick="nextPage()" disabled>
+                Suivant
+                <span class="material-icons">chevron_right</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de détails -->
+    <div id="report-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Détails du signalement</h2>
+                <button class="close-btn" onclick="closeModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Contenu dynamique -->
+            </div>
+            <div class="modal-actions">
+                <button class="action-btn danger" onclick="deleteReport()">
+                    <span class="material-icons">delete</span>
+                    Supprimer
+                </button>
+                <button class="action-btn" onclick="closeModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/reports-view.js"></script>
+</body>
+</html>

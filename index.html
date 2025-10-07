@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUSO - Dashboard Modération</title>
+    <link rel="stylesheet" href="css/admin-dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="logo-container">
+                <h1 class="logo">MUSO</h1>
+            </div>
+            <div class="loading-spinner"><div class="spinner"></div></div>
+            <p class="loading-text">Chargement du dashboard...</p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen" style="display: none;">
+        <div class="login-container">
+            <div class="login-header">
+                <h1 class="logo">MUSO</h1>
+                <h2>Dashboard Modération</h2>
+                <p class="login-subtitle">Accès réservé aux administrateurs</p>
+            </div>
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="email">Email administrateur</label>
+                    <input type="email" id="email" placeholder="admin@muso.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                <button id="email-signin-btn" class="signin-btn">
+                    <span class="material-icons">login</span>
+                    Se connecter
+                </button>
+                <div id="login-error" class="login-error" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Access Denied Screen -->
+    <div id="access-denied-screen" class="access-denied-screen" style="display: none;">
+        <div class="access-denied-container">
+            <div class="access-denied-content">
+                <span class="material-icons access-denied-icon">lock</span>
+                <h2>Accès refusé</h2>
+                <p>Vous n'avez pas les permissions administrateur nécessaires pour accéder à cette interface.</p>
+                <button id="logout-btn" class="logout-btn">Se déconnecter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="main-dashboard" class="main-dashboard" style="display: none;">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1 class="header-title">
+                    Dashboard Modération
+                </h1>
+            </div>
+            <div class="header-right">
+                <div class="status-badge online">
+                    <span class="status-indicator"></span>
+                    En ligne
+                </div>
+                <div class="user-menu">
+                    <span id="user-name" class="user-name"></span>
+                    <button id="header-logout-btn" class="logout-btn-header">
+                        <span class="material-icons">logout</span>
+                    </button>
+                </div>
+                <button id="refresh-btn" class="refresh-btn" title="Actualiser">
+                    <span class="material-icons">refresh</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="navigation-tabs">
+            <div class="nav-scroll-container">
+                <button class="nav-tab active" data-tab="overview">
+                    <span class="material-icons">dashboard</span>
+                    <span class="nav-text">Aperçu</span>
+                </button>
+                <button class="nav-tab" data-tab="moderation">
+                    <span class="material-icons">gavel</span>
+                    <span class="nav-text">Modération</span>
+                </button>
+                <button class="nav-tab" data-tab="anti-multicompte">
+                    <span class="material-icons">security</span>
+                    <span class="nav-text">Anti Multi-comptes</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Overview Tab -->
+            <div id="overview-tab" class="tab-content active">
+                <div class="content-container">
+                    <div class="dashboard-header-section">
+                        <div class="section-title">
+                            <span class="material-icons">dashboard</span>
+                            <h2>Vue d'ensemble - Administration MUSO</h2>
+                        </div>
+                        <div class="last-update">
+                            Dernière mise à jour: <span id="last-update-time">--:--</span>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Cards -->
+                    <div class="metrics-grid">
+                        <div class="metric-card clickable" data-action="navigate-active-users">
+                            <div class="metric-header">
+                                <span class="material-icons metric-icon" style="color: #42a5f5;">people</span>
+                                <span class="metric-title">Utilisateurs actifs</span>
+                            </div>
+                            <div class="metric-value" id="active-users-count">--</div>
+                            <div class="metric-subtitle">dernières 24h</div>
+                        </div>
+
+                        <div class="metric-card clickable" data-action="navigate-reports">
+                            <div class="metric-header">
+                                <span class="material-icons metric-icon" style="color: #66bb6a;">report</span>
+                                <span class="metric-title">Signalements</span>
+                            </div>
+                            <div class="metric-value" id="reports-count">--</div>
+                            <div class="metric-subtitle">dernières 24h</div>
+                        </div>
+
+                        <div class="metric-card clickable" data-action="navigate-suspicious">
+                            <div class="metric-header">
+                                <span class="material-icons metric-icon" style="color: #ff7043;">warning</span>
+                                <span class="metric-title">Comptes suspects</span>
+                            </div>
+                            <div class="metric-value" id="suspicious-count">--</div>
+                            <div class="metric-subtitle">surveillance active</div>
+                        </div>
+
+                        <div class="metric-card clickable" data-action="navigate-blocked-accounts">
+                            <div class="metric-header">
+                                <span class="material-icons metric-icon" style="color: #ab47bc;">block</span>
+                                <span class="metric-title">Comptes bloqués</span>
+                            </div>
+                            <div class="metric-value" id="blocked-actions-count">--</div>
+                            <div class="metric-subtitle">utilisateurs restreints</div>
+                        </div>
+
+                        <div class="metric-card clickable" data-action="navigate-total-users">
+                            <div class="metric-header">
+                                <span class="material-icons metric-icon" style="color: #26c6da;">group</span>
+                                <span class="metric-title">Total utilisateurs</span>
+                            </div>
+                            <div class="metric-value" id="total-users-count">--</div>
+                            <div class="metric-subtitle">base complète</div>
+                        </div>
+
+                        <div class="metric-card clickable" data-action="navigate-admin-users">
+                            <div class="metric-header">
+                                <span class="material-icons metric-icon" style="color: #ffa726;">admin_panel_settings</span>
+                                <span class="metric-title">Administrateurs</span>
+                            </div>
+                            <div class="metric-value" id="admin-users-count">--</div>
+                            <div class="metric-subtitle">comptes admin</div>
+                        </div>
+                    </div>
+
+                    <!-- System Alerts -->
+                    <div class="alerts-section">
+                        <div class="section-title">
+                            <span class="material-icons">notifications</span>
+                            <h3>Alertes système</h3>
+                        </div>
+                        <div id="system-alerts" class="alerts-container">
+                            <!-- Les alertes seront générées dynamiquement -->
+                        </div>
+                    </div>
+
+                    <!-- Active Phases Summary -->
+                    <div class="phases-section">
+                        <div class="section-title">
+                            <span class="material-icons">layers</span>
+                            <h3>Phases de modération actives</h3>
+                        </div>
+                        <div class="phases-container">
+                            <div class="phase-card active">
+                                <div class="phase-header">
+                                    <div class="phase-icon-container">
+                                        <span class="material-icons">gavel</span>
+                                    </div>
+                                    <div class="phase-info">
+                                        <div class="phase-label">
+                                            <span class="phase-name">Phase 1</span>
+                                            <span class="phase-status active">Actif</span>
+                                        </div>
+                                        <h4>Modération comportementale</h4>
+                                        <p>Gestion des réputations, scores et sanctions utilisateurs</p>
+                                    </div>
+                                    <button class="phase-action" data-phase="moderation">
+                                        <span class="material-icons">arrow_forward</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="phase-card active">
+                                <div class="phase-header">
+                                    <div class="phase-icon-container orange">
+                                        <span class="material-icons">security</span>
+                                    </div>
+                                    <div class="phase-info">
+                                        <div class="phase-label">
+                                            <span class="phase-name">Phase 2</span>
+                                            <span class="phase-status active">Actif</span>
+                                        </div>
+                                        <h4>Anti multi-comptes</h4>
+                                        <p>Détection et gestion des comptes suspects et appareils</p>
+                                    </div>
+                                    <button class="phase-action" data-phase="anti-multicompte">
+                                        <span class="material-icons">arrow_forward</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Moderation Tab -->
+            <div id="moderation-tab" class="tab-content">
+                <div class="content-container">
+                    <div class="section-title">
+                        <span class="material-icons">gavel</span>
+                        <h2>Modération - Phase 1</h2>
+                    </div>
+
+                    <!-- Metrics Phase 1 (mobile parity) -->
+                    <div class="phase-metrics-grid" id="phase1-metrics">
+                        <div class="phase-metric-card" data-metric="low-rep">
+                            <div class="pm-label">Réputation faible</div>
+                            <div class="pm-value" id="metric-low-rep">--</div>
+                        </div>
+                        <div class="phase-metric-card" data-metric="banned-users">
+                            <div class="pm-label">Utilisateurs bannis</div>
+                            <div class="pm-value" id="metric-banned-users">--</div>
+                        </div>
+                        <div class="phase-metric-card wide" data-metric="total-users">
+                            <div class="pm-label">Total utilisateurs</div>
+                            <div class="pm-value" id="metric-total-users-phase1">--</div>
+                        </div>
+                        <button class="phase-refresh-btn" id="refresh-phase1" title="Rafraîchir Phase 1"><span class="material-icons">refresh</span></button>
+                    </div>
+
+                    <div class="problem-users-section">
+                        <h3 class="sub-section-title">Utilisateurs problématiques</h3>
+                        <div id="problem-users-list" class="problem-users-list">
+                            <!-- Cartes utilisateurs problématiques dynamiques -->
+                        </div>
+                        <div class="empty-card" id="problem-users-empty" style="display:none;">Aucun utilisateur problématique</div>
+                    </div>
+
+                    <!-- Moderation Filters -->
+                    <div class="filters-section">
+                        <div class="filters-row">
+                            <input type="text" id="user-search" placeholder="Rechercher un utilisateur..." class="search-input">
+                            <select id="action-filter" class="filter-select">
+                                <option value="all">Toutes les actions</option>
+                                <option value="ban">Bannissements</option>
+                                <option value="scoreAdjust">Ajustements score</option>
+                                <option value="quarantine">Quarantaine</option>
+                                <option value="restrict">Restrictions</option>
+                            </select>
+                            <select id="sort-by" class="filter-select">
+                                <option value="score">Trier par score</option>
+                                <option value="reportCount">Trier par signalements</option>
+                                <option value="lastActivity">Dernière activité</option>
+                            </select>
+                            <div class="filter-options">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="problematic-only" checked>
+                                    <span>Problématiques uniquement</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phase 1 User Cards -->
+                    <div class="cards-section">
+                        <h3 class="sub-section-title" style="margin-top:16px; display:flex; align-items:center; gap:8px;">
+                            <span class="material-icons" style="font-size:20px; color:var(--accent-purple);">account_circle</span>
+                            Utilisateurs problématiques
+                        </h3>
+                        <div id="phase1-users-cards"></div>
+                        <div id="phase1-users-empty" style="display:none;">Aucun utilisateur trouvé</div>
+                    </div>
+
+                    <!-- Recent Actions Cards -->
+                    <div class="cards-section">
+                        <h3 class="sub-section-title" style="margin-top:40px; display:flex; align-items:center; gap:8px;">
+                            <span class="material-icons" style="font-size:20px; color:var(--accent-blue);">history</span>
+                            Actions récentes
+                        </h3>
+                        <div id="phase1-actions-cards"></div>
+                        <div id="phase1-actions-empty" style="display:none;">Aucune action récente</div>
+                        <div class="pagination-inline" style="margin-top:12px; display:flex; gap:12px; align-items:center;">
+                            <button id="phase1-actions-prev" class="pagination-btn" disabled>Précédent</button>
+                            <span id="phase1-actions-page-info" style="font-size:12px; color:var(--text-secondary);">Page 1</span>
+                            <button id="phase1-actions-next" class="pagination-btn">Suivant</button>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="pagination-container">
+                        <div class="pagination-info">
+                            <span id="users-pagination-info">-- utilisateurs</span>
+                        </div>
+                        <div class="pagination-controls">
+                            <button id="users-prev-page" class="pagination-btn" disabled>Précédent</button>
+                            <span id="users-page-info">Page 1</span>
+                            <button id="users-next-page" class="pagination-btn">Suivant</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Anti Multi-comptes Tab -->
+            <div id="anti-multicompte-tab" class="tab-content">
+                <div class="content-container">
+                    <div class="section-title">
+                        <span class="material-icons">security</span>
+                        <h2>Anti Multi-comptes - Phase 2</h2>
+                    </div>
+
+                    <!-- Metrics Phase 2 -->
+                    <div class="phase-metrics-grid" id="phase2-metrics">
+                        <div class="phase-metric-card" data-metric="suspicious-accounts">
+                            <div class="pm-label">Comptes suspects</div>
+                            <div class="pm-value" id="metric-suspicious-accounts">--</div>
+                        </div>
+                        <div class="phase-metric-card" data-metric="active-restrictions">
+                            <div class="pm-label">Restrictions actives</div>
+                            <div class="pm-value" id="metric-active-restrictions">--</div>
+                        </div>
+                        <button class="phase-refresh-btn" id="refresh-phase2" title="Rafraîchir Phase 2"><span class="material-icons">refresh</span></button>
+                    </div>
+
+                    <div class="suspicious-cards-section">
+                        <h3 class="sub-section-title">Comptes suspects</h3>
+                        <div id="suspicious-cards-list" class="suspicious-cards-list"></div>
+                        <div class="empty-card" id="suspicious-cards-empty" style="display:none;">Aucun compte suspect</div>
+                    </div>
+
+                    <!-- Anti-Multicompte Content -->
+                    <div class="anti-multicompte-sections">
+                        <!-- Suspicious Accounts Section -->
+                        <div class="section">
+                            <h3>Comptes suspects</h3>
+                            <div class="filters-row">
+                                <input type="text" id="suspicious-search" placeholder="Rechercher..." class="search-input">
+                                <select id="suspicion-level-filter" class="filter-select">
+                                    <option value="0">Tous les niveaux</option>
+                                    <option value="1">Niveau 1</option>
+                                    <option value="2">Niveau 2</option>
+                                    <option value="3">Niveau 3</option>
+                                    <option value="4">Niveau 4</option>
+                                    <option value="5">Niveau 5</option>
+                                </select>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Utilisateur</th>
+                                            <th>Niveau suspicion</th>
+                                            <th>Raisons</th>
+                                            <th>Détecté le</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="suspicious-accounts-body">
+                                        <!-- Données dynamiques -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Devices Section -->
+                        <div class="section">
+                            <h3>Appareils suspects</h3>
+                            <div class="filters-row">
+                                <input type="text" id="device-search" placeholder="Rechercher appareil..." class="search-input">
+                                <select id="min-accounts-filter" class="filter-select">
+                                    <option value="2">Minimum 2 comptes</option>
+                                    <option value="3">Minimum 3 comptes</option>
+                                    <option value="5">Minimum 5 comptes</option>
+                                    <option value="10">Minimum 10 comptes</option>
+                                </select>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID Appareil</th>
+                                            <th>Plateforme</th>
+                                            <th>Modèle</th>
+                                            <th>Nb. comptes</th>
+                                            <th>Dernière activité</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="devices-body">
+                                        <!-- Données dynamiques -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- User Profile Modal -->
+    <div id="user-profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-user-title">Profil utilisateur</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="user-profile-content">
+                <!-- Contenu du profil utilisateur -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Actions Modal -->
+    <div id="admin-actions-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="actions-modal-title">Actions administrateur</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="actions-grid">
+                    <button class="action-btn ban" data-action="ban">
+                        <span class="material-icons">block</span>
+                        Bannir
+                    </button>
+                    <button class="action-btn score" data-action="score">
+                        <span class="material-icons">trending_up</span>
+                        Ajuster score
+                    </button>
+                    <button class="action-btn quarantine" data-action="quarantine">
+                        <span class="material-icons">warning</span>
+                        Quarantaine
+                    </button>
+                    <button class="action-btn note" data-action="note">
+                        <span class="material-icons">note_add</span>
+                        Ajouter note
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+    <!-- Application Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/admin-auth.js"></script>
+    <script src="js/moderation-actions.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/admin-actions-service.js"></script>
+        <!-- Phase 1 & 2 Modules -->
+        <script src="js/phase1-moderation.js"></script>
+        <script src="js/phase2-anti-multi.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', ()=>{
+                // Initialisation différée après Dashboard
+                const initPhases = ()=>{
+                    if(window.Phase1Moderation) window.Phase1Moderation.initialize();
+                    if(window.Phase2AntiMulti) window.Phase2AntiMulti.initialize();
+                };
+                // Attendre que Dashboard ait monté les sections
+                setTimeout(initPhases, 1200);
+            });
+        </script>
+</body>
+</html>

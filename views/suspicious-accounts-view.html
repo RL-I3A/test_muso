@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUSO - Comptes Suspects</title>
+    <link rel="stylesheet" href="../css/admin-dashboard.css">
+    <link rel="stylesheet" href="../css/detailed-views.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="detailed-view-container">
+        <!-- Header -->
+        <header class="detailed-view-header">
+            <button class="back-button" onclick="goBack()">
+                <span class="material-icons">arrow_back</span>
+                <span>Retour au dashboard</span>
+            </button>
+            <div class="header-title">
+                <span class="material-icons">warning</span>
+                <h1>Comptes suspects</h1>
+            </div>
+            <button class="refresh-button" onclick="loadSuspiciousAccounts()">
+                <span class="material-icons">refresh</span>
+            </button>
+        </header>
+
+        <!-- Filtres -->
+        <div class="filters-container">
+            <div class="search-box">
+                <span class="material-icons">search</span>
+                <input type="text" id="search-input" placeholder="Rechercher par ID utilisateur..." onkeyup="applyFilters()">
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-level="0" onclick="setLevelFilter(0)">
+                    Tous <span class="count" id="count-all">0</span>
+                </button>
+                <button class="filter-btn" data-level="1" onclick="setLevelFilter(1)">
+                    Niveau 1 <span class="count" id="count-level-1">0</span>
+                </button>
+                <button class="filter-btn" data-level="2" onclick="setLevelFilter(2)">
+                    Niveau 2 <span class="count" id="count-level-2">0</span>
+                </button>
+                <button class="filter-btn" data-level="3" onclick="setLevelFilter(3)">
+                    Niveau 3 <span class="count" id="count-level-3">0</span>
+                </button>
+                <button class="filter-btn" data-level="4" onclick="setLevelFilter(4)">
+                    Niveau 4 <span class="count" id="count-level-4">0</span>
+                </button>
+                <button class="filter-btn" data-level="5" onclick="setLevelFilter(5)">
+                    Niveau 5 <span class="count" id="count-level-5">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-header">
+            <div class="stat-item">
+                <span class="stat-label">Total</span>
+                <span class="stat-value" id="total-accounts">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Filtrés</span>
+                <span class="stat-value" id="filtered-accounts">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Page</span>
+                <span class="stat-value" id="current-page-info">1/1</span>
+            </div>
+        </div>
+
+        <!-- Liste -->
+        <div class="content-area">
+            <div id="loading-spinner" class="loading-spinner" style="display:none;">
+                <div class="spinner"></div>
+            </div>
+            <div id="accounts-list" class="accounts-list"></div>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <span class="material-icons">security</span>
+                <p>Aucun compte suspect trouvé</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-controls">
+            <button class="pagination-btn" id="prev-page" onclick="previousPage()" disabled>
+                <span class="material-icons">chevron_left</span>
+                Précédent
+            </button>
+            <span class="pagination-info" id="pagination-info">Page 1 / 1</span>
+            <button class="pagination-btn" id="next-page" onclick="nextPage()" disabled>
+                Suivant
+                <span class="material-icons">chevron_right</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="account-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Détails du compte suspect</h2>
+                <button class="close-btn" onclick="closeModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+            <div class="modal-actions">
+                <button class="action-btn" onclick="viewUserProfile()">
+                    <span class="material-icons">person</span>
+                    Voir profil
+                </button>
+                <button class="action-btn danger" onclick="banAccount()">
+                    <span class="material-icons">block</span>
+                    Bannir
+                </button>
+                <button class="action-btn" onclick="closeModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/core/profile.js"></script>
+    <script src="../js/suspicious-accounts-view.js"></script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUSO - Tous les utilisateurs</title>
+    <link rel="stylesheet" href="../css/admin-dashboard.css">
+    <link rel="stylesheet" href="../css/detailed-views.css">
+    <link rel="stylesheet" href="../css/enhanced-cards.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="detailed-view-container">
+        <header class="detailed-view-header">
+            <button class="back-button" onclick="goBack()">
+                <span class="material-icons">arrow_back</span>
+                <span>Retour au dashboard</span>
+            </button>
+            <div class="header-title">
+                <span class="material-icons">group</span>
+                <h1>Tous les utilisateurs</h1>
+            </div>
+            <button class="refresh-button" onclick="loadAllUsers()">
+                <span class="material-icons">refresh</span>
+            </button>
+        </header>
+
+        <div class="filters-container">
+            <div class="search-box">
+                <span class="material-icons">search</span>
+                <input type="text" id="search-input" placeholder="Rechercher par nom, email ou ID..." onkeyup="applyFilters()">
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="setUserTypeFilter('all')">
+                    <span class="material-icons">group</span>
+                    Tous
+                </button>
+                <button class="filter-btn" onclick="setUserTypeFilter('admin')">
+                    <span class="material-icons">admin_panel_settings</span>
+                    Admins
+                </button>
+                <button class="filter-btn" onclick="setUserTypeFilter('regular')">
+                    <span class="material-icons">person</span>
+                    Utilisateurs
+                </button>
+                <button class="filter-btn" onclick="setUserTypeFilter('blocked')">
+                    <span class="material-icons">block</span>
+                    Bloqués
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-header">
+            <div class="stat-item">
+                <span class="stat-label">Total utilisateurs</span>
+                <span class="stat-value" id="total-users">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Filtrés</span>
+                <span class="stat-value" id="filtered-users">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Page</span>
+                <span class="stat-value" id="current-page-info">1/1</span>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <div id="loading-spinner" class="loading-spinner" style="display:none;">
+                <div class="spinner"></div>
+            </div>
+            <div id="users-list" class="accounts-list"></div>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <span class="material-icons">group</span>
+                <p>Aucun utilisateur trouvé</p>
+            </div>
+        </div>
+
+        <div class="pagination-controls">
+            <button class="pagination-btn" id="prev-page" onclick="previousPage()" disabled>
+                <span class="material-icons">chevron_left</span>
+                Précédent
+            </button>
+            <span class="pagination-info" id="pagination-info">Page 1 / 1</span>
+            <button class="pagination-btn" id="next-page" onclick="nextPage()" disabled>
+                Suivant
+                <span class="material-icons">chevron_right</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="user-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Détails utilisateur</h2>
+                <button class="close-btn" onclick="closeModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+            <div class="modal-actions">
+                <button class="action-btn" onclick="viewUserProfile()">
+                    <span class="material-icons">person</span>
+                    Voir profil complet
+                </button>
+                <button class="action-btn" id="block-btn" onclick="toggleBlockUser()">
+                    <span class="material-icons">block</span>
+                    Bloquer
+                </button>
+                <button class="action-btn" onclick="closeModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/core/enhanced-firebase.js"></script>
+    <script src="../js/core/profile.js"></script>
+    <script src="../js/all-users-view.js"></script>
+</body>
+</html>

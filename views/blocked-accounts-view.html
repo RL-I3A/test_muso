@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUSO - Comptes Bloqués</title>
+    <link rel="stylesheet" href="../css/admin-dashboard.css">
+    <link rel="stylesheet" href="../css/detailed-views.css">
+    <link rel="stylesheet" href="../css/enhanced-cards.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="detailed-view-container">
+        <header class="detailed-view-header">
+            <button class="back-button" onclick="goBack()">
+                <span class="material-icons">arrow_back</span>
+                <span>Retour au dashboard</span>
+            </button>
+            <div class="header-title">
+                <span class="material-icons">block</span>
+                <h1>Comptes bloqués</h1>
+            </div>
+            <button class="refresh-button" onclick="loadBlockedAccounts()">
+                <span class="material-icons">refresh</span>
+            </button>
+        </header>
+
+        <div class="filters-container">
+            <div class="search-box">
+                <span class="material-icons">search</span>
+                <input type="text" id="search-input" placeholder="Rechercher par ID utilisateur..." onkeyup="applyFilters()">
+            </div>
+        </div>
+
+        <div class="stats-header">
+            <div class="stat-item">
+                <span class="stat-label">Total bloqués</span>
+                <span class="stat-value" id="total-blocked">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Filtrés</span>
+                <span class="stat-value" id="filtered-blocked">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Page</span>
+                <span class="stat-value" id="current-page-info">1/1</span>
+            </div>
+        </div>
+
+    <!-- Summary stats row (dynamic) -->
+    <div id="blocked-summary"></div>
+
+        <div class="content-area">
+            <div id="loading-spinner" class="loading-spinner" style="display:none;">
+                <div class="spinner"></div>
+            </div>
+            <div id="blocked-list" class="accounts-list"></div>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <span class="material-icons">block</span>
+                <p>Aucun compte bloqué trouvé</p>
+            </div>
+        </div>
+
+        <div class="pagination-controls">
+            <button class="pagination-btn" id="prev-page" onclick="previousPage()" disabled>
+                <span class="material-icons">chevron_left</span>
+                Précédent
+            </button>
+            <span class="pagination-info" id="pagination-info">Page 1 / 1</span>
+            <button class="pagination-btn" id="next-page" onclick="nextPage()" disabled>
+                Suivant
+                <span class="material-icons">chevron_right</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Legacy blocked modal removed: profile handled by unified modal -->
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/core/enhanced-firebase.js"></script>
+    <script src="../js/core/profile.js"></script>
+    <script src="../js/blocked-accounts-view.js"></script>
+</body>
+</html>
