@@ -1,199 +1,191 @@
-// Admin Actions Service (Web) - Parité avec Flutter AdminActionService
-// Gère : ajustement score, ban / unban, quarantaine, (dé)blocage reports & votes, reset réputation, notes
+// Admin Actions Service - Web version mirroring Flutter AdminActionService logic
+// Centralise toutes les actions administrateur avec vérifications permissions & logs cohérents.
 
-(function(){
-  if(!window.FirebaseServices){ console.warn('[AdminActionsService] FirebaseServices non initialisé'); }
-  const FS = ()=>FirebaseServices.firestore;
-  const COL = FirebaseServices?.collections || {};
+// Attendre que Firebase soit prêt
+window.addEventListener('DOMContentLoaded', function() {
+  console.log('🔧 AdminActionsService loading...');
+  
+  // Vérifier que Firebase est disponible
+  if (typeof firebase === 'undefined') {
+    console.error('❌ Firebase not available, retrying...');
+    setTimeout(() => initAdminActionsService(), 100);
+    return;
+  }
+  
+  initAdminActionsService();
+});
 
+function initAdminActionsService() {
+  const firestore = firebase.firestore();
+  const auth = firebase.auth();
+
+  // Mapping des types d'actions pour cohérence multi-plateforme
   const ACTION_TYPES = {
-    scoreAdjust: 'scoreAdjust',
-    ban: 'ban',
-    unban: 'unban',
-    quarantine: 'quarantine',
-    unquarantine: 'unquarantine',
-    blockReports: 'blockReports',
-    unblockReports: 'unblockReports',
-    blockVotes: 'blockVotes',
-    unblockVotes: 'unblockVotes',
-    reset: 'reset',
-    note: 'note'
+    SCORE_ADJUST: 'scoreAdjust',
+    BAN: 'ban',
+    UNBAN: 'unban',
+    QUARANTINE: 'quarantine',
+    UNQUARANTINE: 'unquarantine',
+    BLOCK_REPORTS: 'blockReports',
+    UNBLOCK_REPORTS: 'unblockReports',
+    BLOCK_VOTES: 'blockVotes',
+    UNBLOCK_VOTES: 'unblockVotes',
+    RESET: 'reset',
+    NOTE: 'note'
   };
 
-  function nowTs(){ return new Date(); }
-  function serverTs(){ return FirebaseServices.timestamp(); }
-
-  function requireAdmin(){
-    if(!window.AdminAuth || !AdminAuth.currentUser || !AdminAuth.isAdmin){
-      console.warn('[AdminActionsService] Permissions admin requises');
-      return false;
-    }
-    return true;
-  }
-
-  async function fetchReputation(userId){
+  async function isCurrentUserAdmin(){
     try {
-      const doc = await FS().collection(COL.userReputation).doc(userId).get();
-      if(!doc.exists) return null;
-      return doc.data();
-    } catch(e){ console.error('[AdminActionsService] fetchReputation error', e); return null; }
+      const user = auth.currentUser; if(!user) return false;
+      const snap = await firestore.collection('users').doc(user.uid).get();
+      return snap.exists && snap.data().isAdmin === true;
+    } catch(e){ console.warn('isCurrentUserAdmin error', e); return false; }
   }
 
-  async function updateReputation(userId, data){
-    return FS().collection(COL.userReputation).doc(userId).set(data,{merge:true});
-  }
-
-  async function adjustScore(userId, scoreChange, reason){
-    if(!requireAdmin()) return false;
+  async function logAdminAction({adminId, targetUserId, actionType, reason, metadata}){
     try {
-      const rep = await fetchReputation(userId) || { score:100, reportCount:0, validatedReports:0, voteCount:0, restrictions:{} };
-      const previousScore = rep.score || 100;
-      const newScore = Math.max(0, previousScore + scoreChange);
-      await updateReputation(userId, { score: newScore, updatedAt: serverTs() });
-      await logAdminAction(ACTION_TYPES.scoreAdjust, userId, reason, { scoreChange, previousScore, newScore });
-      toast('Score ajusté');
-      return true;
-    } catch(e){ console.error('adjustScore error', e); toastErr('Erreur ajustement score'); return false; }
-  }
-
-  function computeBannedUntil(durationHours){
-    const d = new Date();
-    d.setHours(d.getHours()+durationHours);
-    return d;
-  }
-
-  async function banUser(userId, durationHours, reason){
-    if(!requireAdmin()) return false;
-    try {
-      const bannedUntil = computeBannedUntil(durationHours);
-      const isPermanent = durationHours >= (24*365*10); // > 10 ans
-      const rep = await fetchReputation(userId) || { score:100, restrictions:{} };
-      const prevScore = rep.score || 100;
-      const penalty = isPermanent ? -100 : -50;
-      const newScore = Math.max(0, prevScore + penalty);
-      await updateReputation(userId, { score: newScore, 'restrictions.bannedUntil': bannedUntil, updatedAt: serverTs() });
-      if(isPermanent){
-        await setSuspicionLevel(userId, 5, 'Bannissement permanent: '+reason);
-      }
-      await logAdminAction(ACTION_TYPES.ban, userId, reason, { bannedUntil: bannedUntil.toISOString(), durationHours, isPermanent, previousScore: prevScore, newScore });
-      toast('Utilisateur banni');
-      return true;
-    } catch(e){ console.error('banUser error', e); toastErr('Erreur bannissement'); return false; }
-  }
-
-  async function unbanUser(userId, reason){
-    if(!requireAdmin()) return false;
-    try {
-      const rep = await fetchReputation(userId) || { score:100, restrictions:{} };
-      const prevScore = rep.score || 100;
-      const bonus = 25;
-      const newScore = Math.min(100, prevScore + bonus);
-      await updateReputation(userId, { score: newScore, 'restrictions.bannedUntil': null, updatedAt: serverTs() });
-      await setSuspicionLevel(userId, 0, 'Débannissement: '+reason);
-      await logAdminAction(ACTION_TYPES.unban, userId, reason, { previousScore: prevScore, newScore, clearedAntiMulticompte: true });
-      toast('Utilisateur débanni');
-      return true;
-    } catch(e){ console.error('unbanUser error', e); toastErr('Erreur débannissement'); return false; }
-  }
-
-  async function quarantineUser(userId, reason){
-    if(!requireAdmin()) return false;
-    try {
-      await setSuspicionLevel(userId, 3, 'Quarantaine: '+reason);
-      await adjustScore(userId, -25, 'Quarantaine administrative');
-      await logAdminAction(ACTION_TYPES.quarantine, userId, reason, {});
-      toast('Utilisateur en quarantaine');
-      return true;
-    } catch(e){ console.error('quarantineUser error', e); toastErr('Erreur quarantaine'); return false; }
-  }
-
-  async function unquarantineUser(userId, reason){
-    if(!requireAdmin()) return false;
-    try {
-      await setSuspicionLevel(userId, 0, 'Sortie quarantaine: '+reason);
-      await logAdminAction(ACTION_TYPES.unquarantine, userId, reason, {});
-      toast('Quarantaine retirée');
-      return true;
-    } catch(e){ console.error('unquarantineUser error', e); toastErr('Erreur retrait quarantaine'); return false; }
-  }
-
-  async function blockReports(userId, reason){
-    if(!requireAdmin()) return false;
-    try {
-      await updateReputation(userId, { 'restrictions.canReport': false });
-      await logAdminAction(ACTION_TYPES.blockReports, userId, reason, {});
-      toast('Signalements bloqués');
-      return true;
-    } catch(e){ console.error('blockReports error', e); toastErr('Erreur blocage signalements'); return false; }
-  }
-  async function unblockReports(userId, reason){
-    if(!requireAdmin()) return false;
-    try { await updateReputation(userId, { 'restrictions.canReport': true }); await logAdminAction(ACTION_TYPES.unblockReports, userId, reason, {}); toast('Signalements rétablis'); return true; } catch(e){ console.error('unblockReports error', e); toastErr('Erreur rétablissement'); return false; }
-  }
-  async function blockVotes(userId, reason){
-    if(!requireAdmin()) return false;
-    try { await updateReputation(userId, { 'restrictions.canVote': false }); await logAdminAction(ACTION_TYPES.blockVotes, userId, reason, {}); toast('Votes bloqués'); return true; } catch(e){ console.error('blockVotes error', e); toastErr('Erreur blocage votes'); return false; }
-  }
-  async function unblockVotes(userId, reason){
-    if(!requireAdmin()) return false;
-    try { await updateReputation(userId, { 'restrictions.canVote': true }); await logAdminAction(ACTION_TYPES.unblockVotes, userId, reason, {}); toast('Votes rétablis'); return true; } catch(e){ console.error('unblockVotes error', e); toastErr('Erreur rétablissement votes'); return false; }
-  }
-
-  async function resetReputation(userId, reason){
-    if(!requireAdmin()) return false;
-    try {
-      const rep = await fetchReputation(userId) || { score:100, restrictions:{} };
-      const previousScore = rep.score || 100;
-      await updateReputation(userId, { score: 100, 'restrictions.bannedUntil': null, 'restrictions.canReport': true, 'restrictions.canVote': true, updatedAt: serverTs() });
-      await setSuspicionLevel(userId, 0, 'Reset complet: '+reason);
-      await logAdminAction(ACTION_TYPES.reset, userId, reason, { previousScore, newScore:100, clearedAntiMulticompte:true });
-      toast('Réputation réinitialisée');
-      return true;
-    } catch(e){ console.error('resetReputation error', e); toastErr('Erreur reset'); return false; }
-  }
-
-  async function addAdminNote(userId, note, category){
-    if(!requireAdmin()) return false;
-    try {
-      await FS().collection(COL.adminNotes).add({ userId, adminId: AdminAuth.currentUser.uid, note, category, timestamp: serverTs() });
-      await logAdminAction(ACTION_TYPES.note, userId, 'Note: '+category, { length: note.length });
-      toast('Note ajoutée');
-      return true;
-    } catch(e){ console.error('addAdminNote error', e); toastErr('Erreur note'); return false; }
-  }
-
-  async function setSuspicionLevel(userId, level, reason){
-    try {
-      await FS().collection(COL.suspiciousAccounts).doc(userId).set({ suspicionLevel: level, updatedAt: serverTs(), reasons: FirebaseServices.firestore.FieldValue.arrayUnion(reason), detectedAt: serverTs() }, { merge:true });
-    } catch(e){ console.error('[AdminActionsService] setSuspicionLevel error', e); }
-  }
-
-  async function logAdminAction(actionType, userId, reason, metadata){
-    try {
-      await FS().collection(COL.adminActions).add({
-        adminId: AdminAuth.currentUser.uid,
-        userId: userId,
-        actionType: actionType,
-        reason: reason,
+      await firestore.collection('admin_actions').add({
+        userId: targetUserId, // Alignement mobile: champ 'userId'
+        adminId,
+        actionType, // Enum string
+        reason,
         metadata: metadata || {},
-        timestamp: serverTs(),
-        source: 'web_dashboard'
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
-    } catch(e){ console.error('[AdminActionsService] logAdminAction error', e); }
+    } catch(e){ console.error('logAdminAction failed', e); }
   }
 
-  // ===== UI Helpers =====
-  function toast(msg){ console.log('[AdminActions]', msg); notify(msg, 'success'); }
-  function toastErr(msg){ console.warn('[AdminActions]', msg); notify(msg, 'error'); }
-  function notify(message, type){
-    if(!window.ModerationActions){ console.log(message); return; }
-    window.ModerationActions.showNotification(message, type);
+  async function adjustUserScore({userId, scoreChange, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    const repRef = firestore.collection('user_reputation').doc(userId);
+    await repRef.set({ reputationScore: firebase.firestore.FieldValue.increment(scoreChange) }, {merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.SCORE_ADJUST, reason, metadata:{scoreChange}});
   }
 
-  // ===== Public API =====
+  async function banUser({userId, hours, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    const until = new Date(Date.now()+hours*3600000);
+    const isPermanent = hours >= 24*365*10; // >10 ans
+    const repRef = firestore.collection('user_reputation').doc(userId);
+    await repRef.set({
+      restrictions:{
+        canReport:false, canComment:false, canPost:false, canMessage:false, canJoinEvents:false,
+        isBanned:true, bannedUntil: firebase.firestore.Timestamp.fromDate(until), reason: reason || 'Bannissement',
+      },
+      lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge:true});
+    // Pénalité score
+    await repRef.set({ reputationScore: firebase.firestore.FieldValue.increment(isPermanent? -100 : -50) }, {merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.BAN, reason, metadata:{durationHours: hours, bannedUntil: until.toISOString(), isPermanent}});
+  }
+
+  async function unbanUser({userId, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    const repRef = firestore.collection('user_reputation').doc(userId);
+    await repRef.set({
+      'restrictions.isBanned': false,
+      'restrictions.bannedUntil': firebase.firestore.FieldValue.delete(),
+      'restrictions.canReport': true,
+      'restrictions.canComment': true,
+      'restrictions.canPost': true,
+      'restrictions.canMessage': true,
+      'restrictions.canJoinEvents': true,
+    }, {merge:true});
+    // Bonus score léger
+    await repRef.set({ reputationScore: firebase.firestore.FieldValue.increment(25) }, {merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.UNBAN, reason, metadata:{scoreBonus:25}});
+  }
+
+  async function quarantineUser({userId, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    const repRef = firestore.collection('user_reputation').doc(userId);
+    await repRef.set({
+      'restrictions.quarantine': true,
+      'restrictions.canPost': false,
+      'restrictions.canComment': false,
+    }, {merge:true});
+    await repRef.set({ reputationScore: firebase.firestore.FieldValue.increment(-25) }, {merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.QUARANTINE, reason});
+  }
+
+  async function unquarantineUser({userId, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    const repRef = firestore.collection('user_reputation').doc(userId);
+    await repRef.set({
+      'restrictions.quarantine': false,
+      'restrictions.canPost': true,
+      'restrictions.canComment': true,
+    }, {merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.UNQUARANTINE, reason});
+  }
+
+  async function blockUserReports({userId, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    await firestore.collection('user_reputation').doc(userId).set({'restrictions.canReport': false},{merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.BLOCK_REPORTS, reason});
+  }
+  async function unblockUserReports({userId, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    await firestore.collection('user_reputation').doc(userId).set({'restrictions.canReport': true},{merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.UNBLOCK_REPORTS, reason});
+  }
+  async function blockUserVotes({userId, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    await firestore.collection('user_reputation').doc(userId).set({'restrictions.canVote': false},{merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.BLOCK_VOTES, reason});
+  }
+  async function unblockUserVotes({userId, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    await firestore.collection('user_reputation').doc(userId).set({'restrictions.canVote': true},{merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.UNBLOCK_VOTES, reason});
+  }
+
+  async function resetUserReputation({userId, reason}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    const repRef = firestore.collection('user_reputation').doc(userId);
+    // Reset valeurs basiques (adapter selon schéma backend si différent)
+    await repRef.set({
+      reputationScore: 100,
+      restrictions: {
+        canReport: true, canVote: true, canPost: true, canComment: true, canMessage:true, canJoinEvents:true,
+        reviewPending: false, forceModeration:false, isBanned:false, quarantine:false
+      }
+    }, {merge:true});
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.RESET, reason});
+  }
+
+  async function addAdminNote({userId, note, category='note'}){
+    const admin = auth.currentUser; if(!admin) throw new Error('Non authentifié');
+    if(!(await isCurrentUserAdmin())) throw new Error('Permission refusée');
+    await firestore.collection('admin_notes').add({
+      userId, adminId: admin.uid, note, category,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await logAdminAction({adminId:admin.uid, targetUserId:userId, actionType: ACTION_TYPES.NOTE, reason: `Note ajoutée: ${category}`, metadata:{length: note.length}});
+  }
+
+  // Expose API globalement
   window.AdminActionsService = {
-    adjustScore, banUser, unbanUser, quarantineUser, unquarantineUser,
-    blockReports, unblockReports, blockVotes, unblockVotes, resetReputation,
-    addAdminNote, ACTION_TYPES
+    ACTION_TYPES,
+    adjustUserScore,
+    banUser, unbanUser,
+    quarantineUser, unquarantineUser,
+    blockUserReports, unblockUserReports,
+    blockUserVotes, unblockUserVotes,
+    resetUserReputation,
+    addAdminNote
   };
-})();
+  
+  console.log('✅ AdminActionsService loaded successfully');
+  console.log('Available actions:', Object.keys(window.AdminActionsService));
+}
